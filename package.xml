@@ -1,0 +1,33 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>listener</name>
+  <version>0.1.0</version>
+  <description>Speech recognition node</description>
+  <maintainer email="jorge.martinezram@ingenieria.unam.edu">Fidel Martinez</maintainer>
+  <license>MIT</license>
+
+  <buildtool_depend>ament_python</buildtool_depend>
+
+  <depend>std_msgs</depend>
+  <depend>rclpy</depend>
+
+  <build_depend>rosidl_default_generators</build_depend>
+  <exec_depend>rosidl_default_runtime</exec_depend>
+
+  <exec_depend>vosk</exec_depend>
+  <exec_depend>pyaudio</exec_depend>
+
+  <exec_depend>launch</exec_depend>
+  <exec_depend>launch_ros</exec_depend>
+  
+  <depend>listener_interfaces</depend>
+
+  <test_depend>ament_lint_auto</test_depend>
+  <test_depend>ament_lint_common</test_depend>
+  
+  <member_of_group>rosidl_interface_packages</member_of_group>
+
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>
