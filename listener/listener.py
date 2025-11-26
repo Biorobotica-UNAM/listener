@@ -58,7 +58,7 @@ class Listener(Node):
             rate=rate,
             input=True,
             frames_per_buffer=4096,
-            input_device_index=9,
+            input_device_index=None,
         )
         return audio, stream
 
