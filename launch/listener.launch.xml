@@ -1,0 +1,28 @@
+<launch>
+  <arg name="namespace" default="listener" />
+
+  <group>
+    <push_ros_namespace namespace="$(var namespace)" />
+
+    <arg name="language" default="en" />
+    <arg name="sample_rate" default="48000" />
+    <arg name="listen_service" default="/listen" />
+
+    <let name="model_path" value="$(find-pkg-share listener)/model" />
+    <let name="grammar_path" value="$(find-pkg-share listener)/grammar" />
+
+    <node
+      pkg="listener"
+      exec="listener"
+      name="listener"
+      output="screen"
+    >
+      <param name="language" value="$(var language)" />
+      <param name="model_path" value="$(var model_path)" />
+      <param name="grammar_path" value="$(var grammar_path)" />
+      <param name="sample_rate" value="$(var sample_rate)" />
+      <param name="listen_service" value="$(var listen_service)" />
+    </node>
+
+  </group>
+</launch>
