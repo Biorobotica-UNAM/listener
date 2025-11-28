@@ -12,8 +12,8 @@
 
     <node
       pkg="listener"
-      exec="listener"
-      name="listener"
+      exec="listener_node"
+      name="listener_node"
       output="screen"
     >
       <param name="language" value="$(var language)" />
