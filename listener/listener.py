@@ -13,7 +13,7 @@ from listener_interfaces.srv import Listen
 class Listener(Node):
 
     def __init__(self):
-        super().__init__("listener_node")
+        super().__init__("listener")
 
         self.language = self.declare_parameter("language", "en").value
         self.model_path = self.declare_parameter("model_path", "model").value
