@@ -1,0 +1,18 @@
+# Evitar pycache de Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Archivos de compilación de ROS2
+install/
+build/
+log/
+
+# Archivos temporales
+*.swp
+*.swo
+
+# Entornos
+.env/
+venv/
