@@ -10,8 +10,8 @@ import pyaudio
 
 from listener_interfaces.srv import Listen
 
-class Listener(Node):
 
+class Listener(Node):
     def __init__(self):
         super().__init__("listener_node")
 
@@ -22,7 +22,7 @@ class Listener(Node):
         self.service_name = self.declare_parameter("listener_service", "listen").value
 
         self.model = self._load_model(self.model_path)
-        
+
         if not self.model:
             self.get_logger().error("No se pudo cargar el modelo Vosk")
             rclpy.shutdown()
@@ -30,8 +30,12 @@ class Listener(Node):
 
         self.audio, self.stream = self._init_audio_stream(self.sample_rate)
 
-        self.srv = self.create_service(Listen, self.service_name, self.handle_listen_service)
-        self.get_logger().info(f"Servicio de reconocimiento de voz listo: {self.service_name}")
+        self.srv = self.create_service(
+            Listen, self.service_name, self.handle_listen_service
+        )
+        self.get_logger().info(
+            f"Servicio de reconocimiento de voz listo: {self.service_name}"
+        )
 
     def _load_model(self, path: str):
         try:
@@ -79,7 +83,9 @@ class Listener(Node):
 
     def _create_recognizer(self, grammar_rules=None):
         if grammar_rules:
-            recognizer = KaldiRecognizer(self.model, self.sample_rate, json.dumps(grammar_rules))
+            recognizer = KaldiRecognizer(
+                self.model, self.sample_rate, json.dumps(grammar_rules)
+            )
             self.get_logger().info("Usando gramática dinámica")
         else:
             recognizer = KaldiRecognizer(self.model, self.sample_rate)
@@ -105,7 +111,9 @@ class Listener(Node):
 
     def handle_listen_service(self, request, response):
         if request.enable:
-            grammar_rules = self._load_grammar(request.grammar) if request.grammar else None
+            grammar_rules = (
+                self._load_grammar(request.grammar) if request.grammar else None
+            )
             recognizer = self._create_recognizer(grammar_rules)
             response.recognized_speech = self._recognize_speech(recognizer)
             response.success = True
@@ -121,6 +129,7 @@ class Listener(Node):
         self.stream.close()
         self.audio.terminate()
 
+
 def main(args=None):
     rclpy.init(args=args)
     node = Listener()
@@ -133,6 +142,7 @@ def main(args=None):
         node.shutdown()
         node.destroy_node()
         rclpy.shutdown()
+
 
 if __name__ == "__main__":
     main()

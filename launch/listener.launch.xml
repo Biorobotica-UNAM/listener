@@ -1,8 +1,7 @@
 <launch>
-  <arg name="namespace" default="listener" />
 
   <group>
-    <push_ros_namespace namespace="$(var namespace)" />
+    <push_ros_namespace namespace="listener" />
 
     <arg name="language" default="en" />
     <arg name="sample_rate" default="48000" />
