@@ -7,8 +7,27 @@ from ament_index_python.packages import get_package_share_directory
 from rclpy.node import Node
 from vosk import Model, KaldiRecognizer
 import pyaudio
+import numpy as np
+import noisereduce as nr
 
 from listener_interfaces.srv import Listen
+
+
+class NoiseReducer:
+    """Clase para filtrar ruido con noisereduce"""
+
+    def __init__(self, sample_rate=48000):
+        self.sample_rate = sample_rate
+
+    def filter(self, pcm_bytes):
+        # Convertir bytes a int16
+        audio_data = np.frombuffer(pcm_bytes, dtype=np.int16)
+        # noisereduce espera float64 o float32
+        audio_float = audio_data.astype(np.float32)
+        # Reducir ruido usando el frame actual
+        reduced = nr.reduce_noise(y=audio_float, sr=self.sample_rate)
+        # Convertir de vuelta a int16
+        return reduced.astype(np.int16).tobytes()
 
 
 class Listener(Node):
@@ -22,13 +41,13 @@ class Listener(Node):
         self.service_name = self.declare_parameter("listener_service", "listen").value
 
         self.model = self._load_model(self.model_path)
-
         if not self.model:
             self.get_logger().error("No se pudo cargar el modelo Vosk")
             rclpy.shutdown()
             return
 
         self.audio, self.stream = self._init_audio_stream(self.sample_rate)
+        self.noise_reducer = NoiseReducer(self.sample_rate)
 
         self.srv = self.create_service(
             Listen, self.service_name, self.handle_listen_service
@@ -37,6 +56,7 @@ class Listener(Node):
             f"Servicio de reconocimiento de voz listo: {self.service_name}"
         )
 
+    # ------------------------- Carga de modelo -------------------------
     def _load_model(self, path: str):
         try:
             package_share_dir = get_package_share_directory("listener")
@@ -54,6 +74,7 @@ class Listener(Node):
             self.get_logger().error(f"Error al cargar el modelo: {e}")
             return None
 
+    # ------------------------- Inicialización de audio -------------------------
     def _init_audio_stream(self, rate: int):
         audio = pyaudio.PyAudio()
         stream = audio.open(
@@ -66,6 +87,7 @@ class Listener(Node):
         )
         return audio, stream
 
+    # ------------------------- Gramática opcional -------------------------
     def _load_grammar(self, grammar_file: str):
         package_share_dir = get_package_share_directory("listener")
         full_path = os.path.join(package_share_dir, "grammar", grammar_file)
@@ -81,6 +103,7 @@ class Listener(Node):
             self.get_logger().warn(f"No se pudo cargar la gramática: {e}")
             return None
 
+    # ------------------------- Recognizer -------------------------
     def _create_recognizer(self, grammar_rules=None):
         if grammar_rules:
             recognizer = KaldiRecognizer(
@@ -93,10 +116,14 @@ class Listener(Node):
         recognizer.SetWords(True)
         return recognizer
 
+    # ------------------------- Reconocimiento de voz -------------------------
     def _recognize_speech(self, recognizer: KaldiRecognizer) -> str:
         self.get_logger().info("Escuchando...")
         while rclpy.ok():
-            data = self.stream.read(4096, exception_on_overflow=False)
+            raw_data = self.stream.read(4096, exception_on_overflow=False)
+            # Pasar audio por el NoiseReducer
+            data = self.noise_reducer.filter(raw_data)
+
             if recognizer.AcceptWaveform(data):
                 result = json.loads(recognizer.Result())
                 text = result.get("text", "")
@@ -109,6 +136,7 @@ class Listener(Node):
                         self.get_logger().info(f"Baja confianza, ignorando: {text}")
         return ""
 
+    # ------------------------- Servicio ROS -------------------------
     def handle_listen_service(self, request, response):
         if request.enable:
             grammar_rules = (
@@ -123,6 +151,7 @@ class Listener(Node):
             response.recognized_speech = ""
         return response
 
+    # ------------------------- Shutdown -------------------------
     def shutdown(self):
         self.get_logger().info("Cerrando audio...")
         self.stream.stop_stream()
@@ -130,10 +159,10 @@ class Listener(Node):
         self.audio.terminate()
 
 
+# ------------------------- Main -------------------------
 def main(args=None):
     rclpy.init(args=args)
     node = Listener()
-
     try:
         rclpy.spin(node)
     except KeyboardInterrupt:
