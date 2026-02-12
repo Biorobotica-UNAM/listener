@@ -119,7 +119,7 @@ class Listener(Node):
     # ------------------------- Reconocimiento de voz -------------------------
     def _recognize_speech(self, recognizer: KaldiRecognizer) -> str:
         self.get_logger().info("Escuchando...")
-        self._flush_audio(n_frames=15)
+        self._flush_audio(n_frames=20)
         while rclpy.ok():
             raw_data = self.stream.read(4096, exception_on_overflow=False)
             # Pasar audio por el NoiseReducer
@@ -131,10 +131,14 @@ class Listener(Node):
                 if text:
                     confs = [w.get("conf", 0) for w in result.get("result", [])]
                     if confs and min(confs) > 0.8:
-                        self.get_logger().info(f"Reconocido con alta confianza: {text}")
+                        self.get_logger().info(
+                            f"Reconocido con {confs}% de confianza: {text}"
+                        )
                         return text
                     else:
-                        self.get_logger().info(f"Baja confianza, ignorando: {text}")
+                        self.get_logger().info(
+                            f" {confs}% de confianza, ignorando: {text}"
+                        )
         return ""
 
     def _flush_audio(self, n_frames=10):
