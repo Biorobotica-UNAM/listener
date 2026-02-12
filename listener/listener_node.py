@@ -87,6 +87,22 @@ class Listener(Node):
         )
         return audio, stream
 
+    def _restatr_audio_stream(self):
+        try:
+            self.get_logger().info("Reiniciando stream de audio...")
+
+            if self.stream is not None:
+                self.stream.stop_stream()
+                self.stream.close()
+
+            if self.audio is not None:
+                self.audio.terminate()
+
+        except Exception as e:
+            self.get_logger().warn(f"Error cerrando audio: {e}")
+
+        self.audio, self.stream = self._init_audio_stream(self.sample_rate)
+
     # ------------------------- Gramática opcional -------------------------
     def _load_grammar(self, grammar_file: str):
         package_share_dir = get_package_share_directory("listener")
@@ -119,7 +135,6 @@ class Listener(Node):
     # ------------------------- Reconocimiento de voz -------------------------
     def _recognize_speech(self, recognizer: KaldiRecognizer) -> str:
         self.get_logger().info("Escuchando...")
-        self._flush_audio(n_frames=20)
         while rclpy.ok():
             raw_data = self.stream.read(4096, exception_on_overflow=False)
             # Pasar audio por el NoiseReducer
@@ -141,16 +156,13 @@ class Listener(Node):
                         )
         return ""
 
-    def _flush_audio(self, n_frames=10):
-        for _ in range(n_frames):
-            self.stream.read(4096, exception_on_overflow=False)
-
     # ------------------------- Servicio ROS -------------------------
     def handle_listen_service(self, request, response):
         if request.enable:
             grammar_rules = (
                 self._load_grammar(request.grammar) if request.grammar else None
             )
+            self._restatr_audio_stream()
             recognizer = self._create_recognizer(grammar_rules)
             response.recognized_speech = self._recognize_speech(recognizer)
             response.success = True
