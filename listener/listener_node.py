@@ -119,6 +119,7 @@ class Listener(Node):
     # ------------------------- Reconocimiento de voz -------------------------
     def _recognize_speech(self, recognizer: KaldiRecognizer) -> str:
         self.get_logger().info("Escuchando...")
+        self._flush_audio(n_frames=15)
         while rclpy.ok():
             raw_data = self.stream.read(4096, exception_on_overflow=False)
             # Pasar audio por el NoiseReducer
@@ -135,6 +136,10 @@ class Listener(Node):
                     else:
                         self.get_logger().info(f"Baja confianza, ignorando: {text}")
         return ""
+
+    def _flush_audio(self, n_frames=10):
+        for _ in range(n_frames):
+            self.stream.read(4096, exception_on_overflow=False)
 
     # ------------------------- Servicio ROS -------------------------
     def handle_listen_service(self, request, response):
