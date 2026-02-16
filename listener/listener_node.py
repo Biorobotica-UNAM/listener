@@ -87,6 +87,22 @@ class Listener(Node):
         )
         return audio, stream
 
+    def _restatr_audio_stream(self):
+        try:
+            self.get_logger().info("Reiniciando stream de audio...")
+
+            if self.stream is not None:
+                self.stream.stop_stream()
+                self.stream.close()
+
+            if self.audio is not None:
+                self.audio.terminate()
+
+        except Exception as e:
+            self.get_logger().warn(f"Error cerrando audio: {e}")
+
+        self.audio, self.stream = self._init_audio_stream(self.sample_rate)
+
     # ------------------------- Gramática opcional -------------------------
     def _load_grammar(self, grammar_file: str):
         package_share_dir = get_package_share_directory("listener")
@@ -130,10 +146,14 @@ class Listener(Node):
                 if text:
                     confs = [w.get("conf", 0) for w in result.get("result", [])]
                     if confs and min(confs) > 0.8:
-                        self.get_logger().info(f"Reconocido con alta confianza: {text}")
+                        self.get_logger().info(
+                            f"Reconocido con {confs}% de confianza: {text}"
+                        )
                         return text
                     else:
-                        self.get_logger().info(f"Baja confianza, ignorando: {text}")
+                        self.get_logger().info(
+                            f" {confs}% de confianza, ignorando: {text}"
+                        )
         return ""
 
     # ------------------------- Servicio ROS -------------------------
@@ -142,6 +162,7 @@ class Listener(Node):
             grammar_rules = (
                 self._load_grammar(request.grammar) if request.grammar else None
             )
+            self._restatr_audio_stream()
             recognizer = self._create_recognizer(grammar_rules)
             response.recognized_speech = self._recognize_speech(recognizer)
             response.success = True
