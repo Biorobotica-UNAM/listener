@@ -11,6 +11,8 @@ import numpy as np
 import noisereduce as nr
 
 from listener_interfaces.srv import Listen
+# ----- GUI -----
+from std_msgs.msg import String
 
 
 class NoiseReducer:
@@ -29,10 +31,11 @@ class NoiseReducer:
         # Convertir de vuelta a int16
         return reduced.astype(np.int16).tobytes()
 
-
 class Listener(Node):
     def __init__(self):
         super().__init__("listener_node")
+        # ----- GUI -----
+        self._gui_state_pub = self.create_publisher(String, "/hsrb/gui/state", 10)
 
         self.language = self.declare_parameter("language", "en").value
         self.model_path = self.declare_parameter("model_path", "model").value
@@ -55,6 +58,13 @@ class Listener(Node):
         self.get_logger().info(
             f"Servicio de reconocimiento de voz listo: {self.service_name}"
         )
+
+    # --------------------- Publicar estado de GUI ---------------------
+    def _publish_gui_state(self, state: str):
+        msg = String()
+        msg.data = state
+        self._gui_state_pub.publish(msg)
+        self.get_logger().info(f"Publicando estado GUI: {state}")
 
     # ------------------------- Carga de modelo -------------------------
     def _load_model(self, path: str):
@@ -164,12 +174,20 @@ class Listener(Node):
             )
             self._restatr_audio_stream()
             recognizer = self._create_recognizer(grammar_rules)
+            self._publish_gui_state("micro")
+            self.get_logger().info("GUI en estado MICRO")
+            rclpy.spin_once(self, timeout_sec=0.1)
             response.recognized_speech = self._recognize_speech(recognizer)
             response.success = True
+            #Regresar al idle al terminar de escuchar 
+            self._publish_gui_state("idle")
+            self.get_logger().info("GUI en estado IDLE")
         else:
             self.get_logger().info("Listener deshabilitado")
             response.success = True
             response.recognized_speech = ""
+            self._publish_gui_state("idle")
+            self.get_logger().info("GUI en estado IDLE")
         return response
 
     # ------------------------- Shutdown -------------------------
