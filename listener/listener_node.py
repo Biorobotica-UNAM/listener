@@ -60,6 +60,10 @@ class ListenerNode(Node):
         self._model_path = self.declare_parameter("model_path", "model").value
         self._service_name = self.declare_parameter("listener_service", "listen").value
 
+        self._asr_engine = self.declare_parameter("asr_engine", "vosk").value
+        self._whisper_size = self.declare_parameter("whisper_model_size", "small").value
+        self._whisper_lang = self.declare_parameter("whisper_language", "en").value
+
         self._package_share_dir = self._resolve_package_share()
         self._model = self._load_model()
         self._audio_stream = self._build_audio_stream()
@@ -81,14 +85,22 @@ class ListenerNode(Node):
             raise
 
     def _load_model(self):
-        """Load the Vosk model; shut down if not found."""
-        model = load_vosk_model(
-            self._package_share_dir, self._model_path, self.get_logger()
-        )
+        """Load the selected ASR model; shut down if not found"""
+        if self._asr_engine == "whisper":
+            from listener.whisper_model_loader import load_whisper_model
+
+            model = load_whisper_model(
+                model_size=self._whisper_size, logger=self.get_logger()
+            )
+        else:
+            model = load_vosk_model(
+                self._package_share_dir, self._model_path, self.get_logger()
+            )
+
         if model is None:
-            self.get_logger().error("Vosk model could not be loaded. Shutting down.")
+            self.get_logger().error("ASR model could not be loaded. Shutting down.")
             rclpy.shutdown()
-            raise RuntimeError("Vosk model not found.")
+            raise RuntimeError("ASR model not found.")
         return model
 
     def _build_audio_stream(self) -> AudioStream:
@@ -119,12 +131,7 @@ class ListenerNode(Node):
         grammar_rules = self._load_grammar_if_requested(request.grammar)
         self._audio_stream.restart()
 
-        recognizer = VoskRecognizer.from_parameters(
-            model=self._model,
-            sample_rate=self._sample_rate,
-            grammar_rules=grammar_rules,
-            logger=self.get_logger(),
-        )
+        recognizer = self._build_recognizer(grammar_rules)
 
         response.recognized_speech = recognizer.recognize(self._audio_stream)
         response.success = True
@@ -136,6 +143,25 @@ class ListenerNode(Node):
             return None
         return load_grammar(
             self._package_share_dir, grammar_filename, self.get_logger()
+        )
+
+    def _build_recognizer(self, grammar_rules):
+        """FActory dispatch: return the right SpeechRecognizer implementation."""
+        if self._asr_engine == "whisper":
+            from listener.whisper_recognizer import WhisperRecognizer
+
+            return WhisperRecognizer.from_parameters(
+                model=self._model,
+                sample_rate=self._sample_rate,
+                language=self._whisper_lang,
+                logger=self.get_logger(),
+            )
+
+        return VoskRecognizer.from_parameters(
+            model=self._model,
+            sample_rate=self._sample_rate,
+            grammar_rules=grammar_rules,
+            logger=self.get_logger(),
         )
 
     # ──────────────────────────────────────────────────────────────────────────
