@@ -12,8 +12,8 @@ from typing import Optional
 
 def load_whisper_model(
     model_size: str = "small",
-    device: str = "cpu",
-    compute_type: str = "int8",
+    device: str = "cuda",
+    compute_type: str = "int16",
     logger=None,
 ):
     """
@@ -30,12 +30,20 @@ def load_whisper_model(
     """
     try:
         from faster_whisper import WhisperModel
+        import torch
+
+        if device == "cuda" and not torch.cuda.is_available():
+            if logger:
+                logger.warn("CUDA requested but not available, falling back to CPU")
+            device = "cpu"
+            compute_type = "int8"
 
         if logger:
             logger.info(
                 f"Loading Whisper model: size={model_size}, "
                 f"device={device}, compute_type={compute_type}"
             )
+
         return WhisperModel(model_size, device=device, compute_type=compute_type)
 
     except Exception as exc:
