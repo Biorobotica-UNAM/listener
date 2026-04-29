@@ -4,7 +4,7 @@
     <push_ros_namespace namespace="listener" />
 
     <arg name="sample_rate" default="16000" />
-    <arg name="asr_engine" default="whisper"/>
+    <arg name="asr_engine" default="vosk"/>
     <arg name="language" default="en" />
     <arg name="whisper_language" default="en"/>
     <arg name="whisper_model_size" default="small"/>

@@ -1,19 +1,5 @@
 [
-  "my name is [unk]",
-  "i am [unk]",
-  "i'm [unk]",
-  "it's [unk]",
-  "this is [unk]",
-  "people call me [unk]",
-  "you can call me [unk]",
-
-  "my name is",
-  "i am",
-  "i'm",
-  "it's",
-  "this is",
-  "people call me",
-  "you can call me",
+  
 
   "james",
   "john",
@@ -35,7 +21,5 @@
   "steven",
   "kevin",
   "brian",
-  "morgan",
-
-  "[unk]"
+  "morgan"
 ]
