@@ -1,20 +1,5 @@
 [
-  "my favorite drink is [unk]",
-  "i like [unk]",
-  "i prefer [unk]",
-  "i love [unk]",
-  "i usually drink [unk]",
-  "i normally drink [unk]",
-  "i always drink [unk]",
-
-  "my favorite drink is",
-  "i like",
-  "i prefer",
-  "i love",
-  "i usually drink",
-  "i normally drink",
-  "i always drink",
-
+  
   "water",
   "coffee",
   "tea",
@@ -34,7 +19,5 @@
   "milkshake",
   "iced tea",
   "latte",
-  "cappuccino",
-
-  "[unk]"
+  "cappuccino"
 ]
