@@ -28,6 +28,8 @@ Principles applied:
 BioRobotics Laboratory, Facultad de Ingenieria, UNAM
 """
 
+import concurrent.futures
+
 import rclpy
 from ament_index_python.packages import get_package_share_directory
 from rclpy.node import Node
@@ -85,7 +87,7 @@ class ListenerNode(Node):
             raise
 
     def _load_model(self):
-        """Load the selected ASR model; shut down if not found"""
+        """Load the selected ASR model; shut down if not found."""
         if self._asr_engine == "whisper":
             from listener.whisper_model_loader import load_whisper_model
 
@@ -119,8 +121,11 @@ class ListenerNode(Node):
         """
         Service callback for the Listen service.
 
-        Restarts the audio stream on every call to flush stale
-        buffers, then recognises one utterance.
+        Runs recognition in a thread with a hard timeout so the
+        service always responds before the client times out.
+        On timeout, signals the recognizer to stop cleanly via
+        cancel() instead of touching the audio stream, avoiding
+        the race condition that caused SIGSEGV.
         """
         if not request.enable:
             self.get_logger().info("Listener disabled by request.")
@@ -130,11 +135,24 @@ class ListenerNode(Node):
 
         grammar_rules = self._load_grammar_if_requested(request.grammar)
         self._audio_stream.restart()
-
         recognizer = self._build_recognizer(grammar_rules)
 
-        response.recognized_speech = recognizer.recognize(self._audio_stream)
-        response.success = True
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+            future = executor.submit(recognizer.recognize, self._audio_stream)
+            try:
+                result = future.result(timeout=3.5)
+                response.recognized_speech = result if result else ""
+                response.success = bool(result)
+            except concurrent.futures.TimeoutError:
+                self.get_logger().warn("ASR recognize() timed out internally.")
+                recognizer.cancel()
+                try:
+                    future.result(timeout=2.0)
+                except Exception:
+                    pass
+                response.recognized_speech = ""
+                response.success = False
+
         return response
 
     def _load_grammar_if_requested(self, grammar_filename: str):
@@ -146,7 +164,7 @@ class ListenerNode(Node):
         )
 
     def _build_recognizer(self, grammar_rules):
-        """FActory dispatch: return the right SpeechRecognizer implementation."""
+        """Factory dispatch: return the right SpeechRecognizer implementation."""
         if self._asr_engine == "whisper":
             from listener.whisper_recognizer import WhisperRecognizer
 

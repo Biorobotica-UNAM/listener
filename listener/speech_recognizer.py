@@ -79,6 +79,15 @@ class VoskRecognizer(SpeechRecognizer):
     def __init__(self, recognizer: KaldiRecognizer, logger=None) -> None:
         self._recognizer = recognizer
         self._logger = logger
+        self._cancelled = False
+
+    # ──────────────────────────────────────────────────────────────────────────
+    # Cancellation
+    # ──────────────────────────────────────────────────────────────────────────
+
+    def cancel(self) -> None:
+        """Signal the recognize loop to stop on the next frame."""
+        self._cancelled = True
 
     # ──────────────────────────────────────────────────────────────────────────
     # Factory Method
@@ -126,15 +135,18 @@ class VoskRecognizer(SpeechRecognizer):
         """
         Block until a high-confidence utterance is detected.
 
+        Exits early if cancel() is called from another thread.
         Frames with minimum word-confidence below the threshold
         are logged and discarded.
         """
         import rclpy
 
+        self._cancelled = False
+
         if self._logger:
             self._logger.info("Listening...")
 
-        while rclpy.ok():
+        while rclpy.ok() and not self._cancelled:
             frame = audio_stream.read()
             if not self._recognizer.AcceptWaveform(frame):
                 continue
