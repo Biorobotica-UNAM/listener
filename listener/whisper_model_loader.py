@@ -13,7 +13,7 @@ from typing import Optional
 def load_whisper_model(
     model_size: str = "small",
     device: str = "cuda",
-    compute_type: str = "float16", # "int8" for CPU, "float16" for GPU, "float32" for max precision
+    compute_type: str = "float16",  # "int8" for CPU, "float16" for GPU, "float32" for max precision
     logger=None,
 ):
     """
@@ -36,7 +36,7 @@ def load_whisper_model(
             if logger:
                 logger.warn("CUDA requested but not available, falling back to CPU")
             device = "cpu"
-            compute_type = "float16" # CPU should use float16 for better performance
+            compute_type = "int8"
 
         if logger:
             logger.info(
