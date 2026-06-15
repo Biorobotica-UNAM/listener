@@ -158,7 +158,7 @@ class WhisperRecognizer(SpeechRecognizer):
             audio,
             language=self._language,
             initial_prompt=initial_prompt,
-            vad_filter=True,
+            vad_filter=False,
             beam_size=5,
         )
         return " ".join(seg.text.strip() for seg in segments).strip()
