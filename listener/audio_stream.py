@@ -27,7 +27,7 @@ from listener.audio_filter import AudioFilter, PassThroughFilter
 
 _FORMAT = pyaudio.paInt16
 _CHANNELS = 1
-_FRAMES_PER_BUFFER = 4096
+_FRAMES_PER_BUFFER = 3072
 
 
 # ============================================================
