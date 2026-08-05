@@ -15,7 +15,7 @@ from listener.audio_stream import AudioStream
 from listener.speech_recognizer import SpeechRecognizer
 from listener.vad import VoiceActivityDetector, SileroVAD
 
-_FRAMES_PER_BUFFER = 4096
+_FRAMES_PER_BUFFER = 3072
 _SILENCE_DURATION_S = 1.5  # sustained non-speech → end of utterance
 _MAX_RECORD_S = 20.0
 
@@ -158,7 +158,7 @@ class WhisperRecognizer(SpeechRecognizer):
             audio,
             language=self._language,
             initial_prompt=initial_prompt,
-            vad_filter=True,
+            vad_filter=False,
             beam_size=5,
         )
         return " ".join(seg.text.strip() for seg in segments).strip()

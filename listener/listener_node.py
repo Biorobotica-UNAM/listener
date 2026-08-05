@@ -29,10 +29,14 @@ BioRobotics Laboratory, Facultad de Ingenieria, UNAM
 """
 
 import rclpy
-from ament_index_python.packages import get_package_share_directory
 from rclpy.node import Node
+from rclpy.executors import MultiThreadedExecutor
+from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
 
 from listener_interfaces.srv import Listen
+from std_msgs.msg import String
+
+from ament_index_python.packages import get_package_share_directory
 
 from listener.audio_filter import NoiseReduceFilter
 from listener.audio_stream import AudioStream
@@ -56,19 +60,30 @@ class ListenerNode(Node):
     def __init__(self) -> None:
         super().__init__("listener_node")
 
-        self._sample_rate = self.declare_parameter("sample_rate", 48000).value
+        self._sample_rate = self.declare_parameter("sample_rate", 16000).value
         self._model_path = self.declare_parameter("model_path", "model").value
         self._service_name = self.declare_parameter("listener_service", "listen").value
 
-        self._asr_engine = self.declare_parameter("asr_engine", "vosk").value
+        self._asr_engine = self.declare_parameter("asr_engine", "whisper").value
         self._whisper_size = self.declare_parameter("whisper_model_size", "small").value
         self._whisper_lang = self.declare_parameter("whisper_language", "en").value
+
+        self._gui_callback_group = MutuallyExclusiveCallbackGroup()
+        self._asr_callback_group = MutuallyExclusiveCallbackGroup()
 
         self._package_share_dir = self._resolve_package_share()
         self._model = self._load_model()
         self._audio_stream = self._build_audio_stream()
 
-        self._srv = self.create_service(Listen, self._service_name, self._handle_listen)
+        self._gui_state_pub = self.create_publisher(
+            String, "/hsrb/gui/state", 10, callback_group=self._gui_callback_group
+        )
+        self._srv = self.create_service(
+            Listen,
+            self._service_name,
+            self._handle_listen,
+            callback_group=self._asr_callback_group,
+        )
         self.get_logger().info(f"ASR service ready: /{self._service_name}")
 
     # ──────────────────────────────────────────────────────────────────────────
@@ -103,6 +118,11 @@ class ListenerNode(Node):
             raise RuntimeError("ASR model not found.")
         return model
 
+    def _publish_gui_state(self, state: str):
+        msg = String()
+        msg.data = state
+        self._gui_state_pub.publish(msg)
+
     def _build_audio_stream(self) -> AudioStream:
         """Compose AudioStream with the noise-reduction filter."""
         audio_filter = NoiseReduceFilter(self._sample_rate)
@@ -128,12 +148,18 @@ class ListenerNode(Node):
             response.recognized_speech = ""
             return response
 
+        self._publish_gui_state("micro")
+
         grammar_rules = self._load_grammar_if_requested(request.grammar)
         self._audio_stream.restart()
 
         recognizer = self._build_recognizer(grammar_rules)
 
-        response.recognized_speech = recognizer.recognize(self._audio_stream)
+        try:
+            response.recognized_speech = recognizer.recognize(self._audio_stream)
+        finally:
+            self._publish_gui_state("idle")
+
         response.success = True
         return response
 
